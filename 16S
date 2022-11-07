@@ -1,0 +1,75 @@
+#Step 0 Clean Data
+
+make.file(inputdir=/home/wei/Data/Pecan_N_2022/soil/16S/, type=fastq, prefix=s16s_stability)
+
+make.contigs(file=s16s_stability.files) 
+
+summary.seqs(fasta=s16s_stability.trim.contigs.fasta, count=s16s_stability.contigs.count_table)
+
+screen.seqs(fasta=r16s_stability.trim.contigs.fasta, count=r16s_stability.contigs.count_table, maxambig=0, maxlength=325, maxhomop=8)
+
+get.current()
+
+summary.seqs(fasta=current, count=current)
+
+unique.seqs(fasta=current, count=current)
+
+summary.seqs(fasta=current, count=current)
+
+align.seqs(fasta=r16s_stability.trim.contigs.good.unique.fasta, reference=/home/wei/Data/Ref/silva.v4.fasta)
+
+summary.seqs(fasta=current, count=current)
+
+screen.seqs(fasta=current, count=current, start=1, end=13424) 
+#end number depends on the length of senquence
+
+summary.seqs(fasta=current, count=current)
+
+#we’ll filter the sequences to remove the overhangs at both ends
+filter.seqs(fasta=current, vertical=T, trump=.)
+
+
+unique.seqs(fasta=r16s_stability.trim.contigs.good.unique.good.filter.fasta, count=r16s_stability.trim.contigs.good.good.count_table)
+
+summary.seqs(fasta=current, count=current)
+
+
+#This command will split the sequences by group and then sort them by abundance and go from most abundant to least and identify sequences that are within 2 nt of each other. If they are then they get merged. We generally favor allowing 1 difference for every 100 bp of sequence:
+pre.cluster(fasta=s16s_stability.trim.contigs.good.unique.good.filter.unique.fasta, count=s16s_stability.trim.contigs.good.unique.good.filter.count_table, diffs=2)
+
+# this command will split the data by sample and check for chimeras.
+chimera.vsearch(fasta=r16s_stability.trim.contigs.good.unique.good.filter.unique.precluster.fasta, count=r16s_stability.trim.contigs.good.unique.good.filter.unique.precluster.count_table, dereplicate=t)
+
+summary.seqs(fasta=current, count=current)
+
+classify.seqs(fasta=r16s_stability.trim.contigs.good.unique.good.filter.unique.precluster.denovo.vsearch.fasta, count=r16s_stability.trim.contigs.good.unique.good.filter.unique.precluster.denovo.vsearch.count_table, reference=/home/wei/Data/Ref/trainset9_032012.pds.fasta, taxonomy=/home/wei/Data/Ref/trainset9_032012.pds.tax)
+
+remove.lineage(fasta=r16s_stability.trim.contigs.good.unique.good.filter.unique.precluster.denovo.vsearch.fasta, count=r16s_stability.trim.contigs.good.unique.good.filter.unique.precluster.denovo.vsearch.count_table, taxonomy=r16s_stability.trim.contigs.good.unique.good.filter.unique.precluster.denovo.vsearch.pds.wang.taxonomy, taxon=Chloroplast-Mitochondria-unknown-Archaea-Eukaryota)
+remove.lineage(fasta=current, count=current, taxonomy=current, taxon=Chloroplast-Mitochondria-unknown-Archaea-Eukaryota)
+
+summary.tax(taxonomy=current, count=current)
+
+rename.file(fasta=current, count=current, taxonomy=current, prefix=s16s_final)
+
+#Step 1 OTU classify
+
+cluster.split(fasta=s16s_final.fasta, count=s16s_final.count_table, taxonomy=s16s_final.taxonomy, taxlevel=4, cutoff=0.03)
+
+make.shared(list=s16s_final.opti_mcc.list, count=s16s_final.count_table, label=0.03)
+
+classify.otu(list=s16s_final.opti_mcc.list, count=s16s_final.count_table, taxonomy=s16s_final.taxonomy, label=0.03)
+
+count.groups(shared=s16s_final.opti_mcc.shared)
+
+#Step 2 analysis
+
+#Option  #label 1-6 means genus-level
+phylotype(taxonomy=s16s_final.taxonomy)
+make.shared(list=s16s_final.tx.list, count=s16s_final.count_table, label=1)
+classify.otu(list=s16s_final.tx.list, count=s16s_final.count_table, taxonomy=s16s_final.taxonomy, label=1)
+
+######Phylogenetic##############
+
+dist.seqs(fasta=s16s_final.fasta, output=lt)
+clearcut(phylip=s16s_final.phylip.dist)
+
